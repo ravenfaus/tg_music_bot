@@ -25,7 +25,7 @@ async def execute(req: web.Request) -> web.Response:
         return web.Response()
 
 
-def start():
+if __name__ == '__main__':
     app = web.Application()
     app.on_startup.append(on_startup)
     app.add_routes([web.post('/', execute)])
