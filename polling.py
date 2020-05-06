@@ -4,7 +4,7 @@ from bot import dp
 from utils.postgres import create_db
 
 
-async def on_startup():
+async def on_startup(dp):
     await create_db()
 
 if __name__ == '__main__':

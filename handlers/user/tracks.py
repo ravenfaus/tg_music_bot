@@ -1,7 +1,9 @@
 import json
+import logging
 import os
 import random
 import string
+import time
 import types
 
 from aiogram import types
@@ -18,9 +20,12 @@ db = postgres.DBCommands()
 vk = Vk(config.VK_TOKEN)
 
 
-async def search_music(message: types.Message):
+async def search_music(message: types.Message, logger: logging.Logger):
     request = message.text
+    start_time = time.time()
     result = json.loads(await vk.search_audio(request, 8))
+    timeout = round((time.time() - start_time) * 1000)
+    logger.info(f'Search tracks in {timeout} ms')
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
     query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
     for track in result['response']['items']:
@@ -70,7 +75,7 @@ async def send_list(clb: types.CallbackQuery, callback_data: dict):
     await clb.message.edit_reply_markup(reply_markup=keyboard_markup)
 
 
-async def send_tracks(clb: types.CallbackQuery, callback_data: dict):
+async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: logging.Logger):
     await clb.answer()
     chat_id = clb.from_user.id
     query_id = callback_data['q']
@@ -78,22 +83,28 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict):
     tracks = await db.get_tracks(query_id, 8, offset)
     for track in tracks:
         await clb.bot.send_chat_action(chat_id, 'upload_audio')
-        await send_audio(chat_id, track)
+        await send_audio(chat_id, track, logger)
 
 
-async def send_track(clb: types.CallbackQuery, callback_data: dict):
+async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: logging.Logger):
     await clb.answer()
     chat_id = clb.from_user.id
     await clb.bot.send_chat_action(chat_id, 'upload_audio')
     track_id = callback_data['id']
     track = await db.get_track(track_id, chat_id)
-    await send_audio(clb, track)
+    await send_audio(clb, track, logger)
 
 
-async def send_audio(clb: types.CallbackQuery, track: Track):
+async def send_audio(clb: types.CallbackQuery, track: Track, logger: logging.Logger):
     file_name = f'{track.artist} - {track.title}.mp3'
+    start = time.time()
     await vk.download(track.url, file_name)
+    timeout = round((time.time() - start) * 1000)
+    logger.info(f'Download audio in {timeout} ms')
+    start = time.time()
     with open(file_name, 'rb') as audio:
         await clb.message.answer_audio(audio, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
                                        performer=track.artist, title=track.title)
+    timeout = round((time.time() - start) * 1000)
+    logger.info(f'Send audio in {timeout} ms')
     os.remove(file_name)
