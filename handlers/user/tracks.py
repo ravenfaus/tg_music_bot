@@ -26,10 +26,12 @@ async def inline_search(inline_query: types.InlineQuery):
     if request:
         offset = inline_query.offset if inline_query.offset else 0
         next_offset = int(offset) + 10
-        sample_audio = config.WAIT_MP3
+        # Hack for cache telegram
+        query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
+        sample_audio = config.WAIT_MP3 + f'?q={query_id}'
+        print(sample_audio)
         results = []
         search_result = json.loads(await vk.search_audio(request, 10, offset))
-        query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
         kb = types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton('Пожалуйста, подождите...', callback_data='loading'))
         for track in search_result['response']['items']:
