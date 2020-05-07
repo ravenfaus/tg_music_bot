@@ -1,4 +1,4 @@
-# Forward bot
+# Music bot
 Telegram bot, which can help you find music from vk.com
 # Requirements
 - [Python3.7+](https://www.python.org/downloads/)
