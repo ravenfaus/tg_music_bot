@@ -25,3 +25,5 @@ POSTGRES_PASS = 'pass'
 POSTGRES_DB = 'db'
 
 VK_TOKEN = 'TOKEN'
+# custom options
+ADMIN_ID = 123456789

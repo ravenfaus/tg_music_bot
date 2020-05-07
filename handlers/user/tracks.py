@@ -9,6 +9,8 @@ import types
 
 from aiogram import types
 from aiogram.utils.callback_data import CallbackData
+
+from models import InlineTrack
 from models.track import Track
 from utils.vk import Vk
 import config
@@ -31,16 +33,29 @@ async def inline_search(inline_query: types.InlineQuery):
         kb = types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton('Пожалуйста, подождите...', callback_data='loading'))
         for track in search_result['response']['items']:
-            item = await add_track(track, query_id, request, inline_query.from_user.id)
+            item = await add_inline_track(track, inline_query.from_user.id)
             results.append(types.InlineQueryResultAudio(id=item.track_id, audio_url=sample_audio,
                                                         title=item.title, performer=item.artist,
                                                         audio_duration=item.duration, reply_markup=kb))
         await inline_query.answer(results, next_offset=next_offset)
 
 
+async def add_inline_track(track: dict, user_id: int):
+    new_track = InlineTrack()
+    new_track.user_id = user_id
+    new_track.track_id = track['id']
+    new_track.artist = track['artist']
+    new_track.title = track['title']
+    new_track.duration = track['duration']
+    new_track.url = track['url'].split('?extra')[0]
+    new_track.first_query = datetime.datetime.now()
+    await new_track.create()
+    return new_track
+
+
 async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult):
-    track = await Track.query.where(Track.track_id == int(chosen_inline_query.result_id)) \
-        .where(Track.user_id == chosen_inline_query.from_user.id).order_by(Track.first_query.desc()).gino.first()
+    track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id))\
+        .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(InlineTrack.first_query.desc()).gino.first()
     file_name = f'{track.artist} - {track.title}.mp3'
     await vk.download(track.url, file_name)
     try:
