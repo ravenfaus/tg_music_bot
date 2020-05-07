@@ -20,6 +20,42 @@ db = postgres.DBCommands()
 vk = Vk(config.VK_TOKEN)
 
 
+async def inline_search(inline_query: types.InlineQuery):
+    request = inline_query.query
+    if request:
+        sample_audio = config.WAIT_MP3
+        results = []
+        search_result = json.loads(await vk.search_audio(request, 10))
+        query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
+        kb = types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton('Пожалуйста, подождите...', callback_data='loading'))
+        for track in search_result['response']['items']:
+            item = await db.add_track(track, query_id, request)
+            results.append(types.InlineQueryResultAudio(id=item.track_id, audio_url=sample_audio,
+                                                        title=item.title, performer=item.artist,
+                                                        audio_duration=item.duration, reply_markup=kb))
+        await inline_query.answer(results)
+
+
+async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult):
+    print(chosen_inline_query)
+    track = await db.get_track(chosen_inline_query.result_id, chosen_inline_query.from_user.id)
+    file_name = f'{track.artist} - {track.title}.mp3'
+    await vk.download(track.url, file_name)
+    try:
+        with open(file_name, 'rb') as audio:
+            cached_track = await chosen_inline_query.bot.send_audio(config.CHANNEL_ID, audio)
+            input_media = types.InputMediaAudio(media=cached_track.audio.file_id, duration=track.duration,
+                                                performer=track.artist,
+                                                title=track.title)
+            await chosen_inline_query.bot.edit_message_media(media=input_media,
+                                                             inline_message_id=chosen_inline_query.inline_message_id)
+        os.remove(file_name)
+    except FileNotFoundError:
+        await chosen_inline_query.bot.edit_message_caption(inline_message_id=chosen_inline_query.inline_message_id,
+                                                           caption='Извините, возникли неполадки... Попробуйте еще раз:)')
+
+
 async def search_music(message: types.Message, logger: logging.Logger):
     request = message.text
     start_time = time.time()

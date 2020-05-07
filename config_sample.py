@@ -1,6 +1,7 @@
 # After edit rename this file to config.py
 API_TOKEN = '111111:ABCDEFGHIJKLMNOPQRSTVWXYZ'
-
+# Music storage for inline tracks
+CHANNEL_ID = -1001150016051
 # web hook settings
 WEBHOOK_HOST = 'https://yoursite.com'
 WEBHOOK_PATH = '/dir/with/code/'

@@ -1,3 +1,4 @@
+import aiofiles as aiofiles
 import aiohttp
 
 
@@ -37,12 +38,9 @@ class Vk:
         params = {'owner_id': owner_id, 'count': count, 'offset': offset}
         return await self.__request('audio.getPlaylists', params)
 
-    async def download(self, url, destination, chunk_size=65536):
+    async def download(self, url, destination):
         async with self.session.get(url) as resp:
-            await resp.content.read(10)
-            with open(destination, 'wb') as fd:
-                while True:
-                    chunk = await resp.content.read(chunk_size)
-                    if not chunk:
-                        break
-                    fd.write(chunk)
+            if resp.status == 200:
+                file = await aiofiles.open(destination, mode='wb')
+                await file.write(await resp.read())
+                await file.close()

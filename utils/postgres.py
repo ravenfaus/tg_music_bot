@@ -94,7 +94,7 @@ class DBCommands:
         return await Track.select('request').where(Track.query_id == query_id).gino.scalar()
 
     async def get_track(self, track_id, user_id):
-        track = await Track.query.where(Track.track_id == int(track_id) and Track.user_id == int(user_id)).gino.first()
+        track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)).gino.first()
         return track
 
     async def get_tracks(self, query_id, limit=8, offset=0):

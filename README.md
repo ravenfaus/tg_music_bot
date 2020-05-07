@@ -7,6 +7,7 @@ Telegram bot, which can help you find music from vk.com
 - Postgresql
 - Gino
 - SQLAlchemy
+- Aiofiles
 # How to run?
 1. Edit config_sample.py and rename to config.py
 2. Use webhook.py or polling.py to start bot

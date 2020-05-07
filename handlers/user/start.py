@@ -9,3 +9,4 @@ async def start_message(message: types.Message):
     text = f'Добро пожаловать, {user.full_name}!\n' \
            f'Чтобы начать искать песни, введи исполнителя и/или название песни. Я постараюсь найти эту песню:)'
     await message.answer(text)
+    await message.answer_audio('https://sound-pack.net/download/Sound_08472.mp3', 'test')
