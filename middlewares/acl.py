@@ -13,7 +13,7 @@ class ACLMiddleware(BaseMiddleware):
             new_user = await User.create(user_id=user.id, language=user.language_code, full_name=user.full_name,
                                          username=user.username)
             await Bot.get_current().send_message(config.ADMIN_ID, f'New user:\n{new_user.user_id} '
-                                                                  f'{new_user.full_name} {new_user.username}')
+                                                                  f'{new_user.full_name} @{new_user.username}')
 
     async def on_pre_process_message(self, message: types.Message, data: dict):
         await self.setup_chat(message.from_user)
