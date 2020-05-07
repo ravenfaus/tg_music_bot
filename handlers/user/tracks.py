@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -8,15 +9,13 @@ import types
 
 from aiogram import types
 from aiogram.utils.callback_data import CallbackData
-from utils import postgres
-from utils.postgres import Track
+from models.track import Track
 from utils.vk import Vk
 import config
 
 track_callback = CallbackData('song', 'id')
 list_callback = CallbackData('list', 'q', 'off', 'd')
 show_callback = CallbackData('show', 'q', 'off')
-db = postgres.DBCommands()
 vk = Vk(config.VK_TOKEN)
 
 
@@ -32,7 +31,7 @@ async def inline_search(inline_query: types.InlineQuery):
         kb = types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton('Пожалуйста, подождите...', callback_data='loading'))
         for track in search_result['response']['items']:
-            item = await db.add_track(track, query_id, request)
+            item = await add_track(track, query_id, request, inline_query.from_user.id)
             results.append(types.InlineQueryResultAudio(id=item.track_id, audio_url=sample_audio,
                                                         title=item.title, performer=item.artist,
                                                         audio_duration=item.duration, reply_markup=kb))
@@ -40,7 +39,8 @@ async def inline_search(inline_query: types.InlineQuery):
 
 
 async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult):
-    track = await db.get_track(chosen_inline_query.result_id, chosen_inline_query.from_user.id)
+    track = await Track.query.where(Track.track_id == int(chosen_inline_query.result_id)) \
+        .where(Track.user_id == chosen_inline_query.from_user.id).order_by(Track.first_query.desc()).gino.first()
     file_name = f'{track.artist} - {track.title}.mp3'
     await vk.download(track.url, file_name)
     try:
@@ -65,7 +65,7 @@ async def search_music(message: types.Message, logger: logging.Logger):
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
     query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
     for track in result['response']['items']:
-        item = await db.add_track(track, query_id, request)
+        item = await add_track(track, query_id, request, message.from_user.id)
         m, s = divmod(item.duration, 60)
         text = f'{m}:{s} | {item.artist} - {item.title}'
         data = track_callback.new(id=item.track_id)
@@ -79,25 +79,40 @@ async def search_music(message: types.Message, logger: logging.Logger):
     await message.answer(request, reply_markup=keyboard_markup)
 
 
+async def add_track(track: dict, query_id: str, request: str, user_id: int):
+    new_track = Track()
+    new_track.request = request
+    new_track.query_id = query_id
+    new_track.user_id = user_id
+    new_track.track_id = track['id']
+    new_track.artist = track['artist']
+    new_track.title = track['title']
+    new_track.duration = track['duration']
+    new_track.url = track['url'].split('?extra')[0]
+    new_track.first_query = datetime.datetime.now()
+    await new_track.create()
+    return new_track
+
+
 async def send_list(clb: types.CallbackQuery, callback_data: dict):
     await clb.answer()
     query_id = callback_data['q']
     offset = int(callback_data['off'])
     next_offset = offset + 8
     prev_offset = (offset - 8) if offset > 0 else 0
-    query = await db.get_track_query(query_id)
+    query = await Track.select('request').where(Track.query_id == query_id).gino.scalar()
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
     direction = callback_data['d']
     if direction:
         tracks = json.loads(await vk.search_audio(query, 8, offset))
         for track in tracks['response']['items']:
-            item = await db.add_track(track, query_id, query)
+            item = await add_track(track, query_id, query, clb.from_user.id)
             m, s = divmod(item.duration, 60)
             text = f'{m}:{s} | {item.artist} - {item.title}'
             data = track_callback.new(id=item.track_id)
             keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
     else:
-        tracks = await db.get_tracks(query_id, 8, offset)
+        tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
         for track in tracks:
             m, s = divmod(track.duration, 60)
             text = f'{m}:{s} | {track.artist} - {track.title}'
@@ -116,7 +131,7 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: log
     chat_id = clb.from_user.id
     query_id = callback_data['q']
     offset = callback_data['off']
-    tracks = await db.get_tracks(query_id, 8, offset)
+    tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
     for track in tracks:
         await clb.bot.send_chat_action(chat_id, 'upload_audio')
         await send_audio(chat_id, track, logger)
@@ -124,10 +139,11 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: log
 
 async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: logging.Logger):
     await clb.answer()
-    chat_id = clb.from_user.id
-    await clb.bot.send_chat_action(chat_id, 'upload_audio')
+    user_id = clb.from_user.id
+    await clb.bot.send_chat_action(user_id, 'upload_audio')
     track_id = callback_data['id']
-    track = await db.get_track(track_id, chat_id)
+    track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)) \
+        .order_by(Track.first_query.desc()).gino.first()
     await send_audio(clb, track, logger)
 
 
