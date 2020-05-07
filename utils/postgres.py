@@ -1,13 +1,10 @@
-import string
-import time
 import datetime
-from random import random
 
-from aiogram import types, Bot
+from aiogram import types
 from gino import Gino
 from gino.schema import GinoSchemaVisitor
 from sqlalchemy import (Column, Integer, BigInteger, String,
-                        Sequence, TIMESTAMP, Boolean, JSON)
+                        Sequence, TIMESTAMP, JSON)
 from sqlalchemy import sql
 
 from config import POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASS

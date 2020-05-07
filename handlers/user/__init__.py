@@ -1,11 +1,10 @@
 from aiogram import Dispatcher
 from aiogram import types
-from aiogram.dispatcher.filters import CommandStart, CommandHelp
 
 from .default_handler import all_other_messages
 from .start import start_message
-from .tracks import search_music, send_list, send_tracks, send_track, inline_search, inline_chosen_track
 from .tracks import list_callback, show_callback, track_callback
+from .tracks import search_music, send_list, send_tracks, send_track, inline_search, inline_chosen_track
 
 
 def setup(dp: Dispatcher):

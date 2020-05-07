@@ -1,4 +1,3 @@
-import time
 import logging
 
 from aiogram import types

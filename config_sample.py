@@ -1,7 +1,8 @@
 # After edit rename this file to config.py
 API_TOKEN = '111111:ABCDEFGHIJKLMNOPQRSTVWXYZ'
-# Music storage for inline tracks
+# inline options
 CHANNEL_ID = -1001150016051
+WAIT_MP3 = 'https://yoursite/wait.mp3'
 # web hook settings
 WEBHOOK_HOST = 'https://yoursite.com'
 WEBHOOK_PATH = '/dir/with/code/'
@@ -10,6 +11,7 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 REDIS_HOST = "127.0.0.1"
 REDIS_PORT = 6379
 REDIS_PASS = 'password'
+REDIS_DB = 0
 # your id
 ADMIN_ID = 123456789
 # web server settings
