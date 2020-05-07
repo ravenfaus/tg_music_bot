@@ -29,7 +29,6 @@ async def inline_search(inline_query: types.InlineQuery):
         # Hack for cache telegram
         query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
         sample_audio = config.WAIT_MP3 + f'?q={query_id}'
-        print(sample_audio)
         results = []
         search_result = json.loads(await vk.search_audio(request, 10, offset))
         kb = types.InlineKeyboardMarkup().add(
@@ -55,10 +54,11 @@ async def add_inline_track(track: dict, user_id: int):
     return new_track
 
 
-async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult):
+async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, logger: dict):
     track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id))\
         .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(InlineTrack.first_query.desc()).gino.first()
     file_name = f'{track.artist} - {track.title}.mp3'
+    start_time = time.time()
     await vk.download(track.url, file_name)
     try:
         with open(file_name, 'rb') as audio:
@@ -68,17 +68,16 @@ async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult):
             await chosen_inline_query.bot.edit_message_media(media=input_media,
                                                              inline_message_id=chosen_inline_query.inline_message_id)
         os.remove(file_name)
+        logger['timeout'] = round((time.time() - start_time) * 1000)
+        logger['track'] = track
     except FileNotFoundError:
         await chosen_inline_query.bot.edit_message_caption(inline_message_id=chosen_inline_query.inline_message_id,
                                                            caption='Извините, возникли неполадки... Попробуйте еще раз:)')
 
 
-async def search_music(message: types.Message, logger: logging.Logger):
+async def search_music(message: types.Message):
     request = message.text
-    start_time = time.time()
     result = json.loads(await vk.search_audio(request, 8))
-    timeout = round((time.time() - start_time) * 1000)
-    logger.info(f'Search tracks in {timeout} ms')
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
     query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
     for track in result['response']['items']:
@@ -143,37 +142,40 @@ async def send_list(clb: types.CallbackQuery, callback_data: dict):
     await clb.message.edit_reply_markup(reply_markup=keyboard_markup)
 
 
-async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: logging.Logger):
+async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dict):
     await clb.answer()
     chat_id = clb.from_user.id
     query_id = callback_data['q']
     offset = callback_data['off']
     tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
+    logs_list = []
+    timeouts_list = []
     for track in tracks:
         await clb.bot.send_chat_action(chat_id, 'upload_audio')
-        await send_audio(chat_id, track, logger)
+        timeouts_list.append(await send_audio(clb, track))
+        logs_list.append(track)
+    logger['timeout'] = timeouts_list
+    logger['track'] = logs_list
 
 
-async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: logging.Logger):
+async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict):
     await clb.answer()
     user_id = clb.from_user.id
     await clb.bot.send_chat_action(user_id, 'upload_audio')
     track_id = callback_data['id']
     track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)) \
         .order_by(Track.first_query.desc()).gino.first()
-    await send_audio(clb, track, logger)
+    logger['timeout'] = await send_audio(clb, track)
+    logger['track'] = track
 
 
-async def send_audio(clb: types.CallbackQuery, track: Track, logger: logging.Logger):
+async def send_audio(clb: types.CallbackQuery, track: Track):
     file_name = f'{track.artist} - {track.title}.mp3'
-    start = time.time()
+    start_time = time.time()
     await vk.download(track.url, file_name)
-    timeout = round((time.time() - start) * 1000)
-    logger.info(f'Download audio in {timeout} ms')
-    start = time.time()
     with open(file_name, 'rb') as audio:
         await clb.message.answer_audio(audio, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
                                        performer=track.artist, title=track.title)
-    timeout = round((time.time() - start) * 1000)
-    logger.info(f'Send audio in {timeout} ms')
+    timeout = round((time.time() - start_time) * 1000)
     os.remove(file_name)
+    return timeout
