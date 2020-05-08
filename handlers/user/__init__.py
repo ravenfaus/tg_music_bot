@@ -1,7 +1,7 @@
 from aiogram import Dispatcher
 from aiogram import types
 
-from .admin import get_users, count_tracks, send_command, send_to_all
+from .admin import get_users, count_tracks, send_command, send_to_all, count_downloaded
 from .default_handler import all_other_messages
 from .start import start_message
 from .tracks import list_callback, show_callback, track_callback
@@ -14,6 +14,8 @@ def setup(dp: Dispatcher):
     # Admin commands
     dp.register_message_handler(get_users, lambda message: message.from_user.id == config.ADMIN_ID, commands='users')
     dp.register_message_handler(count_tracks, lambda message: message.from_user.id == config.ADMIN_ID, commands='tracks')
+    dp.register_message_handler(count_downloaded, lambda message: message.from_user.id == config.ADMIN_ID,
+                                commands='downloaded')
     dp.register_message_handler(send_command, lambda message: message.from_user.id == config.ADMIN_ID, commands='send')
     dp.register_message_handler(send_to_all, state=MessageOrder.message_text)
     # Commands handlers

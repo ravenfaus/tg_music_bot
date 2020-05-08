@@ -5,7 +5,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from models import User, Track, db, InlineTrack
+from models import User, Track, db, InlineTrack, TrackLog
 
 
 class MessageOrder(StatesGroup):
@@ -15,7 +15,7 @@ class MessageOrder(StatesGroup):
 async def get_users(message: types.Message):
     count = await db.func.count(User.user_id).gino.scalar()
     users = await User.query.gino.all()
-    text = 'Count of users: {}\n'.format(count)
+    text = 'Количество пользователей: {}\n'.format(count)
     for user in users:
         text += f'{user.user_id} {user.full_name} @{user.username}\n'
     await message.answer(text)
@@ -24,7 +24,13 @@ async def get_users(message: types.Message):
 async def count_tracks(message: types.Message):
     count = await db.func.count(Track.id).gino.scalar()
     inline_count = await db.func.count(InlineTrack.id).gino.scalar()
-    await message.answer(f'Total count of tracks: {count}\nTotal count of inline tracks: {inline_count}')
+    await message.answer(f'Общее число треков: {count}\nОбщее число инлайн треков: {inline_count}')
+
+
+async def count_downloaded(message: types.Message):
+    inline_count = await db.select([db.func.count()]).where(TrackLog.type == 'inline').gino.scalar()
+    callback_count = await db.select([db.func.count()]).where(TrackLog.type == 'callback').gino.scalar()
+    await message.answer(f'Число скачанных треков инлайн:{inline_count}\nЧисло скачанных треков в чате:{callback_count}')
 
 
 async def send_command(message: types.Message):
