@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import random
+import re
 import string
 import time
 import types
@@ -19,6 +20,18 @@ track_callback = CallbackData('song', 'id')
 list_callback = CallbackData('list', 'q', 'off', 'd')
 show_callback = CallbackData('show', 'q', 'off')
 vk = Vk(config.VK_TOKEN)
+
+
+def get_mp3_link(link: str):
+    if 'index.m3u8' not in link:
+        return link
+    else:
+        if '/audios/' in link:
+            result = re.search(r'(.*)\/(.*)\/audios\/(.*)\/', link)
+            return f'{result.group(1)}/audios/{result.group(3)}.mp3'
+        else:
+            result = re.search(r'(.*p[0-9]*\/)([a-z0-9]*)\/(.*)\/', link)
+            return f'{result.group(1)}{result.group(3)}.mp3'
 
 
 async def inline_search(inline_query: types.InlineQuery):
@@ -48,7 +61,7 @@ async def add_inline_track(track: dict, user_id: int):
     new_track.artist = track['artist']
     new_track.title = track['title']
     new_track.duration = track['duration']
-    new_track.url = track['url'].split('?extra')[0]
+    new_track.url = get_mp3_link(track['url'])
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track
@@ -104,7 +117,7 @@ async def add_track(track: dict, query_id: str, request: str, user_id: int):
     new_track.artist = track['artist']
     new_track.title = track['title']
     new_track.duration = track['duration']
-    new_track.url = track['url'].split('?extra')[0]
+    new_track.url = get_mp3_link(track['url'])
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track

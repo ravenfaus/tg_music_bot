@@ -1,7 +1,9 @@
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from models.user import User
+from middlewares.limits import LimitsMiddleware
+
+limits = LimitsMiddleware()
 
 
 async def start_message(message: types.Message):
@@ -10,4 +12,3 @@ async def start_message(message: types.Message):
            f'Также я могу искать песни в inline режиме. Нажми на кнопку, чтобы попробовать. Надеюсь понравится:)'
     kb = InlineKeyboardMarkup().add(InlineKeyboardButton('Попробовать', switch_inline_query_current_chat=''))
     await message.answer(text, reply_markup=kb)
-

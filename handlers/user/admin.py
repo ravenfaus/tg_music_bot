@@ -3,7 +3,6 @@ import asyncio
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from models import User, Track, db, InlineTrack, TrackLog
 
@@ -30,7 +29,7 @@ async def count_tracks(message: types.Message):
 async def count_downloaded(message: types.Message):
     inline_count = await db.select([db.func.count()]).where(TrackLog.type == 'inline').gino.scalar()
     callback_count = await db.select([db.func.count()]).where(TrackLog.type == 'callback').gino.scalar()
-    await message.answer(f'Число скачанных треков инлайн:{inline_count}\nЧисло скачанных треков в чате:{callback_count}')
+    await message.answer(f'Число скачанных треков инлайн: {inline_count}\nЧисло скачанных треков в чате: {callback_count}')
 
 
 async def send_command(message: types.Message):

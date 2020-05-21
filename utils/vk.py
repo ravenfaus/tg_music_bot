@@ -3,11 +3,11 @@ import aiohttp
 
 
 class Vk:
-    VK_VERSION = '5.95'
+    VK_VERSION = '5.116'
     url = "https://api.vk.com/method/{}"
     headers = {
-        'User-Agent': 'KateMobileAndroid/56 lite-460 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; '
-                      'en)'}
+        'User-Agent': 'VKAndroidApp/5.52-4543 (Android 5.1.1; SDK 22; x86_64; unknown Android SDK built for x86_64; '
+                      'en; 320x240)'}
 
     def __init__(self, token):
         self.token = token
