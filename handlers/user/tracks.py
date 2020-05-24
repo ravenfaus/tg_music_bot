@@ -34,6 +34,14 @@ def get_mp3_link(link: str):
             return f'{result.group(1)}{result.group(3)}.mp3'
 
 
+def escape_file(name: str):
+    name = name.replace('/', ' ')
+    name = name.replace('*', ' ')
+    name = name.replace('\\', ' ')
+    name = name.replace('?', ' ')
+    return name
+
+
 async def inline_search(inline_query: types.InlineQuery):
     request = inline_query.query
     if request:
@@ -70,7 +78,7 @@ async def add_inline_track(track: dict, user_id: int):
 async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, logger: dict):
     track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id))\
         .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(InlineTrack.first_query.desc()).gino.first()
-    file_name = f'{track.artist} - {track.title}.mp3'
+    file_name = escape_file(f'{track.artist} - {track.title}.mp3')
     start_time = time.time()
     await vk.download(track.url, file_name)
     try:
@@ -183,7 +191,7 @@ async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict
 
 
 async def send_audio(clb: types.CallbackQuery, track: Track):
-    file_name = f'{track.artist} - {track.title}.mp3'
+    file_name = escape_file(f'{track.artist} - {track.title}.mp3')
     start_time = time.time()
     await vk.download(track.url, file_name)
     with open(file_name, 'rb') as audio:
