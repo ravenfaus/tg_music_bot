@@ -10,7 +10,7 @@ class Vk:
     def __init__(self, token, base_url):
         self.token = token
         self.url = base_url
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
 
     async def __request(self, method, params):
         params['access_token'] = self.token
