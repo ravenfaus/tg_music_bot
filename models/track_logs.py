@@ -14,3 +14,4 @@ class TrackLog(BaseModel):
     first_query = Column(TIMESTAMP)
     type = Column(String)
     timeout = Column(Integer)
+    file_id = Column(String)

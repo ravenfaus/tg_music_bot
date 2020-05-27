@@ -19,19 +19,7 @@ import config
 track_callback = CallbackData('song', 'id')
 list_callback = CallbackData('list', 'q', 'off', 'd')
 show_callback = CallbackData('show', 'q', 'off')
-vk = Vk(config.VK_TOKEN)
-
-
-def get_mp3_link(link: str):
-    if 'index.m3u8' not in link:
-        return link
-    else:
-        if '/audios/' in link:
-            result = re.search(r'(.*)\/(.*)\/audios\/(.*)\/', link)
-            return f'{result.group(1)}/audios/{result.group(3)}.mp3'
-        else:
-            result = re.search(r'(.*p[0-9]*\/)([a-z0-9]*)\/(.*)\/', link)
-            return f'{result.group(1)}{result.group(3)}.mp3'
+vk = Vk(config.VK_TOKEN, config.VK_URL)
 
 
 def escape_file(name: str):
@@ -69,15 +57,16 @@ async def add_inline_track(track: dict, user_id: int):
     new_track.artist = track['artist']
     new_track.title = track['title']
     new_track.duration = track['duration']
-    new_track.url = get_mp3_link(track['url'])
+    new_track.url = track['url']
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track
 
 
 async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, logger: dict):
-    track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id))\
-        .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(InlineTrack.first_query.desc()).gino.first()
+    track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id)) \
+        .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(
+        InlineTrack.first_query.desc()).gino.first()
     file_name = escape_file(f'{track.artist} - {track.title}.mp3')
     start_time = time.time()
     await vk.download(track.url, file_name)
@@ -90,6 +79,7 @@ async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, log
                                                              inline_message_id=chosen_inline_query.inline_message_id)
         os.remove(file_name)
         logger['timeout'] = round((time.time() - start_time) * 1000)
+        logger['track_file_id'] = cached_track.audio.file_id
         logger['track'] = track
     except FileNotFoundError:
         await chosen_inline_query.bot.edit_message_caption(inline_message_id=chosen_inline_query.inline_message_id,
@@ -125,7 +115,7 @@ async def add_track(track: dict, query_id: str, request: str, user_id: int):
     new_track.artist = track['artist']
     new_track.title = track['title']
     new_track.duration = track['duration']
-    new_track.url = get_mp3_link(track['url'])
+    new_track.url = track['url']
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track
@@ -171,11 +161,15 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dic
     tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
     logs_list = []
     timeouts_list = []
+    file_ids = []
     for track in tracks:
         await clb.bot.send_chat_action(chat_id, 'upload_audio')
-        timeouts_list.append(await send_audio(clb, track))
+        timeout, file_id = await send_audio(clb, track)
+        timeouts_list.append(timeout)
+        file_ids.append(file_id)
         logs_list.append(track)
     logger['timeout'] = timeouts_list
+    logger['file_id'] = file_ids
     logger['track'] = logs_list
 
 
@@ -186,7 +180,9 @@ async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict
     track_id = callback_data['id']
     track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)) \
         .order_by(Track.first_query.desc()).gino.first()
-    logger['timeout'] = await send_audio(clb, track)
+    timeout, file_id = await send_audio(clb, track)
+    logger['timeout'] = timeout
+    logger['file_id'] = file_id
     logger['track'] = track
 
 
@@ -195,8 +191,11 @@ async def send_audio(clb: types.CallbackQuery, track: Track):
     start_time = time.time()
     await vk.download(track.url, file_name)
     with open(file_name, 'rb') as audio:
-        await clb.message.answer_audio(audio, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
+        cached_track = await clb.bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
+                                                title=track.title, duration=track.duration)
+        file_id = cached_track.audio.file_id
+        await clb.message.answer_audio(file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
                                        performer=track.artist, title=track.title)
     timeout = round((time.time() - start_time) * 1000)
     os.remove(file_name)
-    return timeout
+    return timeout, file_id

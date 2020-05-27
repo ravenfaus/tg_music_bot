@@ -23,20 +23,22 @@ class LoggerMiddleware(BaseMiddleware):
     async def on_post_process_chosen_inline_result(self, chosen_inline_result: types.ChosenInlineResult,
                                                    data: dict, logger: dict):
         if 'track' in logger['logger']:
-            await self.add_log(logger['logger']['track'], logger['logger']['timeout'], 'inline')
+            await self.add_log(logger['logger']['track'], logger['logger']['timeout'],
+                               'inline', logger['logger']['file_id'])
 
     async def on_post_process_callback_query(self, callback_query: types.CallbackQuery,
                                              data: dict, logger: dict):
-        if 'track' in logger['logger'] and 'timeout' in logger['logger']:
+        if 'track' in logger['logger'] and 'timeout' in logger['logger'] and 'file_id' in logger['file_id']:
             track = logger['logger']['track']
             timeout = logger['logger']['timeout']
+            file_id = logger['logger']['file_id']
             if isinstance(logger['logger']['track'], list):
                 for i in range(len(track)):
-                    await self.add_log(track[i], timeout[i], 'callback')
+                    await self.add_log(track[i], timeout[i], 'callback', file_id[i])
             else:
-                await self.add_log(track, timeout, 'callback')
+                await self.add_log(track, timeout, 'callback', file_id)
 
-    async def add_log(self, track: Track, timeout: int, request_type: str):
+    async def add_log(self, track: Track, timeout: int, request_type: str, file_id: str):
         log = TrackLog()
         log.track_id = track.track_id
         log.user_id = track.user_id
@@ -45,4 +47,5 @@ class LoggerMiddleware(BaseMiddleware):
         log.first_query = track.first_query
         log.type = request_type
         log.timeout = timeout
+        log.file_id = file_id
         await log.create()

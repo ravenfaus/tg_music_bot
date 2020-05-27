@@ -27,13 +27,13 @@ class BaseModel(db.Model):
         return f"<{model} {values_str}>"
 
 
-async def on_startup(dispatcher: Dispatcher):
+async def on_startup(dispatcher: Dispatcher = None):
     await db.set_bind(config.POSTGRES_URI)
     db.gino: GinoSchemaVisitor
     await db.gino.create_all()
 
 
-async def on_shutdown(dispatcher: Dispatcher):
+async def on_shutdown(dispatcher: Dispatcher = None):
     bind = db.pop_bind()
     if bind:
         await bind.close()

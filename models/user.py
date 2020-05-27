@@ -1,4 +1,4 @@
-from sqlalchemy import sql, Column, Integer, BigInteger, String, JSON
+from sqlalchemy import sql, Column, BigInteger, String, TIMESTAMP, func
 
 from .base import BaseModel
 
@@ -10,5 +10,5 @@ class User(BaseModel):
     language = Column(String(2))
     full_name = Column(String(100))
     username = Column(String(50))
-    favorites = Column(JSON)
+    last_action = Column(TIMESTAMP(), nullable=False, default=func.now())
     query: sql.Select
