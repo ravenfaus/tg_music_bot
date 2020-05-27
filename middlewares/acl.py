@@ -16,11 +16,18 @@ class ACLMiddleware(BaseMiddleware):
                                          username=user.username)
             await Bot.get_current().send_message(config.ADMIN_ID, f'New user:\n{new_user.user_id} '
                                                                   f'{new_user.full_name} @{new_user.username}')
-        else:
+
+    async def update_action(self, user: types.User):
+        user_id = user.id
+        db_user = await User.get(user_id)
+        if db_user:
             await db_user.update(last_action=datetime.datetime.now()).apply()
 
     async def on_pre_process_message(self, message: types.Message, data: dict):
         await self.setup_chat(message.from_user)
+
+    async def on_post_process_message(self, message: types.Message, data: dict):
+        await self.update_action(message.from_user)
 
     async def on_pre_process_callback_query(self, query: types.CallbackQuery, data: dict):
         await self.setup_chat(query.from_user)

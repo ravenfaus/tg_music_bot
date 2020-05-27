@@ -28,7 +28,7 @@ class LoggerMiddleware(BaseMiddleware):
 
     async def on_post_process_callback_query(self, callback_query: types.CallbackQuery,
                                              data: dict, logger: dict):
-        if 'track' in logger['logger'] and 'timeout' in logger['logger'] and 'file_id' in logger['file_id']:
+        if 'track' in logger['logger'] and 'timeout' in logger['logger'] and 'file_id' in logger['logger']:
             track = logger['logger']['track']
             timeout = logger['logger']['timeout']
             file_id = logger['logger']['file_id']

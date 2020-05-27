@@ -79,7 +79,7 @@ async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, log
                                                              inline_message_id=chosen_inline_query.inline_message_id)
         os.remove(file_name)
         logger['timeout'] = round((time.time() - start_time) * 1000)
-        logger['track_file_id'] = cached_track.audio.file_id
+        logger['file_id'] = cached_track.audio.file_id
         logger['track'] = track
     except FileNotFoundError:
         await chosen_inline_query.bot.edit_message_caption(inline_message_id=chosen_inline_query.inline_message_id,
