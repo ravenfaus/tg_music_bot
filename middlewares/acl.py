@@ -26,8 +26,13 @@ class ACLMiddleware(BaseMiddleware):
     async def on_pre_process_message(self, message: types.Message, data: dict):
         await self.setup_chat(message.from_user)
 
-    async def on_post_process_message(self, message: types.Message, data: dict):
-        await self.update_action(message.from_user)
+    async def on_post_process_update(self, update: types.Update, results, data: dict):
+        if update.message:
+            await self.update_action(update.message.from_user)
+        elif update.callback_query:
+            await self.update_action(update.callback_query.from_user)
+        elif update.inline_query:
+            await self.update_action(update.inline_query.from_user)
 
     async def on_pre_process_callback_query(self, query: types.CallbackQuery, data: dict):
         await self.setup_chat(query.from_user)

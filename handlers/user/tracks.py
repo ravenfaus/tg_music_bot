@@ -7,8 +7,10 @@ import re
 import string
 import time
 import types
+from typing import Union
 
-from aiogram import types
+from aiogram import types, Bot
+from aiogram.types.base import String, Integer
 from aiogram.utils.callback_data import CallbackData
 
 from models import InlineTrack
@@ -28,6 +30,36 @@ def escape_file(name: str):
     name = name.replace('\\', ' ')
     name = name.replace('?', ' ')
     return name
+
+
+async def get_album(message: types.Message, logger: dict):
+    link = message.get_args()
+    res = re.search(r'(audio_playlist|album\/)(.*)_(.*)(%2F|_)(.*)', link)
+    try:
+        if res:
+            owner_id = res.group(2)
+            album_id = res.group(3)
+            access_key = res.group(5)
+            result = json.loads(await vk.get_audio(owner_id, 100, 0, album_id, access_key))
+            query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
+            logs_list = []
+            timeouts_list = []
+            file_ids = []
+            for track in result['response']['items']:
+                item = await add_track(track, query_id, link, message.from_user.id)
+                await message.bot.send_chat_action(message.from_user.id, 'upload_audio')
+                timeout, file_id = await send_audio(item, message.bot, message.from_user.id)
+                timeouts_list.append(timeout)
+                file_ids.append(file_id)
+                logs_list.append(track)
+            logger['timeout'] = timeouts_list
+            logger['file_id'] = file_ids
+            logger['track'] = logs_list
+            await message.answer('Загрузка альбома завершена. Приятного прослушивания;)')
+        else:
+            await message.answer('Произошла ошибка во время обработки ссылки. Проверьте, пожалуйста, ссылку.')
+    except KeyError:
+        await message.answer('Произошла ошибка во время загрузки альбома. Проверьте ссылку, альбом должен быть открытым.')
 
 
 async def inline_search(inline_query: types.InlineQuery):
@@ -155,7 +187,7 @@ async def send_list(clb: types.CallbackQuery, callback_data: dict):
 
 async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dict):
     await clb.answer()
-    chat_id = clb.from_user.id
+    user_id = clb.from_user.id
     query_id = callback_data['q']
     offset = callback_data['off']
     tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
@@ -163,8 +195,8 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dic
     timeouts_list = []
     file_ids = []
     for track in tracks:
-        await clb.bot.send_chat_action(chat_id, 'upload_audio')
-        timeout, file_id = await send_audio(clb, track)
+        await clb.bot.send_chat_action(user_id, 'upload_audio')
+        timeout, file_id = await send_audio(track, clb.bot, user_id)
         timeouts_list.append(timeout)
         file_ids.append(file_id)
         logs_list.append(track)
@@ -180,22 +212,22 @@ async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict
     track_id = callback_data['id']
     track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)) \
         .order_by(Track.first_query.desc()).gino.first()
-    timeout, file_id = await send_audio(clb, track)
+    timeout, file_id = await send_audio(track, clb.bot, user_id)
     logger['timeout'] = timeout
     logger['file_id'] = file_id
     logger['track'] = track
 
 
-async def send_audio(clb: types.CallbackQuery, track: Track):
+async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
     file_name = escape_file(f'{track.artist} - {track.title}.mp3')
     start_time = time.time()
     await vk.download(track.url, file_name)
     with open(file_name, 'rb') as audio:
-        cached_track = await clb.bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
-                                                title=track.title, duration=track.duration)
+        cached_track = await bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
+                                            title=track.title, duration=track.duration)
         file_id = cached_track.audio.file_id
-        await clb.message.answer_audio(file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
-                                       performer=track.artist, title=track.title)
+        await bot.send_audio(user_id, file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
+                             performer=track.artist, title=track.title)
     timeout = round((time.time() - start_time) * 1000)
     os.remove(file_name)
     return timeout, file_id

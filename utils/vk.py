@@ -26,11 +26,14 @@ class Vk:
         params = {'q': query, 'count': count, 'offset': offset}
         return await self.__request('audio.search', params)
 
-    async def get_audio(self, owner_id, count=100, offset=0, playlist_id=None):
-        params = {'owner_id': owner_id, 'count': count, 'offset': offset}
+    async def get_audio(self, owner_id=None, count=100, offset=0, playlist_id=None, access_key=None):
+        params = {'count': count, 'offset': offset}
+        if owner_id:
+            params['owner_id'] = owner_id
         if playlist_id:
             params['playlist_id'] = playlist_id
-            return 'true'
+        if access_key:
+            params['access_key'] = access_key
         return await self.__request('audio.get', params)
 
     async def get_playlists(self, owner_id, count=100, offset=0):
