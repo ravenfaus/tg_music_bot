@@ -35,7 +35,7 @@ class LoggerMiddleware(BaseMiddleware):
             track = logger['logger']['track']
             timeout = logger['logger']['timeout']
             file_id = logger['logger']['file_id']
-            if isinstance(logger['logger']['track'], list):
+            if isinstance(track, list):
                 for i in range(len(track)):
                     await self.add_log(track[i], timeout[i], 'callback', file_id[i])
             else:
@@ -47,7 +47,7 @@ class LoggerMiddleware(BaseMiddleware):
                 track = logger['logger']['track']
                 timeout = logger['logger']['timeout']
                 file_id = logger['logger']['file_id']
-                if isinstance(logger['logger']['track'], list):
+                if isinstance(track, list):
                     for i in range(len(track)):
                         await self.add_log(track[i], timeout[i], 'album', file_id[i])
                 else:

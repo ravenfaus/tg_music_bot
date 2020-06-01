@@ -12,7 +12,6 @@ from typing import Union
 from aiogram import types, Bot
 from aiogram.types.base import String, Integer
 from aiogram.utils.callback_data import CallbackData
-
 from models import InlineTrack
 from models.track import Track
 from utils.vk import Vk
@@ -33,8 +32,9 @@ def escape_file(name: str):
 
 
 async def get_album(message: types.Message, logger: dict):
+    print('Get album')
     link = message.get_args()
-    res = re.search(r'(audio_playlist|album\/)(.*)_(.*)(%2F|_)(.*)', link)
+    res = re.search(r'(audio_playlist|album\/)(.*)_(.*)(%2F|_|\/)(.*)', link)
     try:
         if res:
             owner_id = res.group(2)
@@ -45,13 +45,15 @@ async def get_album(message: types.Message, logger: dict):
             logs_list = []
             timeouts_list = []
             file_ids = []
-            for track in result['response']['items']:
+            items = result['response']['items']
+            for track in items:
                 item = await add_track(track, query_id, link, message.from_user.id)
-                await message.bot.send_chat_action(message.from_user.id, 'upload_audio')
+                print('Track ' + item.title)
+                await message.bot.send_chat_action(message.from_user.id, types.ChatActions.UPLOAD_AUDIO)
                 timeout, file_id = await send_audio(item, message.bot, message.from_user.id)
                 timeouts_list.append(timeout)
                 file_ids.append(file_id)
-                logs_list.append(track)
+                logs_list.append(item)
             logger['timeout'] = timeouts_list
             logger['file_id'] = file_ids
             logger['track'] = logs_list
@@ -59,7 +61,8 @@ async def get_album(message: types.Message, logger: dict):
         else:
             await message.answer('Произошла ошибка во время обработки ссылки. Проверьте, пожалуйста, ссылку.')
     except KeyError:
-        await message.answer('Произошла ошибка во время загрузки альбома. Проверьте ссылку, альбом должен быть открытым.')
+        await message.answer('Произошла ошибка во время загрузки альбома. '
+                             'Проверьте ссылку, альбом должен быть открытым.')
 
 
 async def inline_search(inline_query: types.InlineQuery):
