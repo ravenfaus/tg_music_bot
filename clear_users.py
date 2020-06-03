@@ -2,11 +2,15 @@ import asyncio
 
 from aiogram import Bot
 from aiogram.types import ChatActions
-from aiogram.utils.exceptions import BotBlocked, ChatNotFound
+from aiogram.utils.exceptions import BotBlocked, ChatNotFound, UserDeactivated
 
 import config
 from models import User
 from models.base import on_shutdown, on_startup
+
+
+async def send_admin(message: str):
+    await bot.send_message(config.ADMIN_ID, message)
 
 
 async def parse():
@@ -16,13 +20,15 @@ async def parse():
     for u in users:
         try:
             await bot.send_chat_action(u.user_id, ChatActions.TYPING)
-            print('Allowed from {}'.format(u.full_name))
+        except UserDeactivated:
+            await u.delete()
+            await send_admin('User deactivated from {}'.format(u.full_name))
         except BotBlocked:
-            print('Bot blocked from {}'.format(u.full_name))
             await u.delete()
+            await send_admin('Bot blocked from {}'.format(u.full_name))
         except ChatNotFound:
-            print('Chat not found {} from {}'.format(u.user_id, u.full_name))
             await u.delete()
+            await send_admin('Chat not found {} from {}'.format(u.user_id, u.full_name))
         await asyncio.sleep(1)
     await on_shutdown()
 
