@@ -26,6 +26,10 @@ class Vk:
         params = {'q': query, 'count': count, 'offset': offset}
         return await self.__request('audio.search', params)
 
+    async def get_similar(self, owner_id, track_id):
+        params = {'target_audio': f"{owner_id}_{track_id}"}
+        return await self.__request('audio.getRecommendations', params)
+
     async def get_audio(self, owner_id=None, count=100, offset=0, playlist_id=None, access_key=None):
         params = {'count': count, 'offset': offset}
         if owner_id:

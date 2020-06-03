@@ -8,6 +8,7 @@ class TrackLog(BaseModel):
     query: sql.Select
     id = Column(Integer, unique=True, primary_key=True)
     track_id = Column(Integer)
+    owner_id = Column(Integer)
     user_id = Column(BigInteger)
     title = Column(String)
     artist = Column(String)

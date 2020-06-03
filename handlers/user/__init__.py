@@ -4,7 +4,7 @@ from aiogram import types
 from .admin import get_users, count_tracks, send_command, send_to_all, count_downloaded
 from .default_handler import all_other_messages
 from .start import start_message
-from .tracks import list_callback, show_callback, track_callback, get_album
+from .tracks import list_callback, show_callback, track_callback, get_album, show_similar, similar_callback
 from .tracks import search_music, send_list, send_tracks, send_track, inline_search, inline_chosen_track
 from .admin import MessageOrder
 import config
@@ -25,6 +25,7 @@ def setup(dp: Dispatcher):
     dp.register_callback_query_handler(send_list, list_callback.filter())
     dp.register_callback_query_handler(send_tracks, show_callback.filter())
     dp.register_callback_query_handler(send_track, track_callback.filter())
+    dp.register_callback_query_handler(show_similar, similar_callback.filter())
     dp.register_message_handler(search_music, content_types=types.ContentType.TEXT)
     # Inline
     dp.register_inline_handler(inline_search)

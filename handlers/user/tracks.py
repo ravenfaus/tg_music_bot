@@ -12,7 +12,9 @@ from typing import Union
 from aiogram import types, Bot
 from aiogram.types.base import String, Integer
 from aiogram.utils.callback_data import CallbackData
-from models import InlineTrack
+from aiogram.utils.exceptions import InvalidQueryID
+
+from models import InlineTrack, TrackLog
 from models.track import Track
 from utils.vk import Vk
 import config
@@ -20,6 +22,7 @@ import config
 track_callback = CallbackData('song', 'id')
 list_callback = CallbackData('list', 'q', 'off', 'd')
 show_callback = CallbackData('show', 'q', 'off')
+similar_callback = CallbackData('sim', 'o', 't', 'q', 'off', 'd', 'f')
 vk = Vk(config.VK_TOKEN, config.VK_URL)
 
 
@@ -93,6 +96,7 @@ async def add_inline_track(track: dict, user_id: int):
     new_track.title = track['title']
     new_track.duration = track['duration']
     new_track.url = track['url']
+    new_track.owner_id = track['owner_id']
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track
@@ -151,6 +155,7 @@ async def add_track(track: dict, query_id: str, request: str, user_id: int):
     new_track.title = track['title']
     new_track.duration = track['duration']
     new_track.url = track['url']
+    new_track.owner_id = track['owner_id']
     new_track.first_query = datetime.datetime.now()
     await new_track.create()
     return new_track
@@ -209,7 +214,10 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dic
 
 
 async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict):
-    await clb.answer()
+    try:
+        await clb.answer()
+    except InvalidQueryID:
+        logging.info('InvalidQueryID from {}'.format(clb.from_user.id))
     user_id = clb.from_user.id
     await clb.bot.send_chat_action(user_id, 'upload_audio')
     track_id = callback_data['id']
@@ -223,14 +231,75 @@ async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict
 
 async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
     file_name = escape_file(f'{track.artist} - {track.title}.mp3')
+    query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
+    kb = types.InlineKeyboardMarkup().add(
+        types.InlineKeyboardButton('Показать похожие',
+                                   callback_data=similar_callback.new(
+                                       o=track.owner_id, t=track.track_id, q=query_id, off=0, d=1, f=1)))
     start_time = time.time()
-    await vk.download(track.url, file_name)
-    with open(file_name, 'rb') as audio:
-        cached_track = await bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
-                                            title=track.title, duration=track.duration)
-        file_id = cached_track.audio.file_id
+    cached = await TrackLog.query.where(TrackLog.track_id == track.track_id).gino.first()
+    if cached:
+        file_id = cached.file_id
         await bot.send_audio(user_id, file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
-                             performer=track.artist, title=track.title)
+                             performer=track.artist, title=track.title, reply_markup=kb)
+    else:
+        await vk.download(track.url, file_name)
+        with open(file_name, 'rb') as audio:
+            cached_track = await bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
+                                                title=track.title, duration=track.duration)
+            file_id = cached_track.audio.file_id
+            await bot.send_audio(user_id, file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
+                                 performer=track.artist, title=track.title, reply_markup=kb)
+            os.remove(file_name)
     timeout = round((time.time() - start_time) * 1000)
-    os.remove(file_name)
     return timeout, file_id
+
+
+async def show_similar(clb: types.CallbackQuery, callback_data: dict, logger: dict):
+    await clb.answer()
+    similar_track = await TrackLog.query.where(TrackLog.track_id == int(callback_data['t']))\
+        .where(TrackLog.owner_id == int(callback_data['o'])).gino.first()
+    print('Track: {} {}'.format(callback_data['t'], callback_data['o']))
+    track_name = f"{similar_track.artist} - {similar_track.title}"
+    query_id = callback_data['q']
+    offset = int(callback_data['off'])
+    next_offset = offset + 8
+    prev_offset = (offset - 8) if offset > 0 else 0
+    keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
+    direction = int(callback_data['d'])
+    print('Direction {}'.format(direction))
+    if direction:
+        tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
+        if tracks:
+            for track in tracks:
+                m, s = divmod(track.duration, 60)
+                text = f'{m}:{s} | {track.artist} - {track.title}'
+                data = track_callback.new(id=track.id)
+                keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
+        else:
+            tracks = json.loads(await vk.get_similar(similar_track.owner_id, similar_track.track_id))
+            tracks = tracks['response']['items']
+            for i in range(8):
+                item = await add_track(tracks[i], query_id, track_name, clb.from_user.id)
+                m, s = divmod(item.duration, 60)
+                text = f'{m}:{s} | {item.artist} - {item.title}'
+                data = track_callback.new(id=item.track_id)
+                keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
+    else:
+        tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
+        for track in tracks:
+            m, s = divmod(track.duration, 60)
+            text = f'{m}:{s} | {track.artist} - {track.title}'
+            data = track_callback.new(id=track.id)
+            keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
+    keyboard_markup.row(
+        types.InlineKeyboardButton('<', callback_data=similar_callback.new(o=similar_track.owner_id, t=similar_track.track_id,
+                                                                           q=query_id, off=prev_offset, d=0, f=0)),
+        types.InlineKeyboardButton('All', callback_data=show_callback.new(q=query_id, off=offset)),
+        types.InlineKeyboardButton('>', callback_data=similar_callback.new(o=similar_track.owner_id, t=similar_track.track_id,
+                                                                           q=query_id, off=next_offset, d=1, f=0)),
+    )
+    if int(callback_data['f']):
+        await clb.message.answer(f'Похожие треки на {track_name}', reply_markup=keyboard_markup)
+    else:
+        await clb.message.edit_reply_markup(keyboard_markup)

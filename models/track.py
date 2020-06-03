@@ -10,6 +10,7 @@ class Track(BaseModel):
 
     id = Column(Integer, unique=True, primary_key=True)
     track_id = Column(Integer)
+    owner_id = Column(Integer)
     user_id = Column(
         ForeignKey(f"{User.__tablename__}.user_id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,

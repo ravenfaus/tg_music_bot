@@ -54,13 +54,16 @@ class LoggerMiddleware(BaseMiddleware):
                     await self.add_log(track, timeout, 'album', file_id)
 
     async def add_log(self, track: Track, timeout: int, request_type: str, file_id: str):
-        log = TrackLog()
-        log.track_id = track.track_id
-        log.user_id = track.user_id
-        log.title = track.title
-        log.artist = track.artist
-        log.first_query = track.first_query
-        log.type = request_type
-        log.timeout = timeout
-        log.file_id = file_id
-        await log.create()
+        exist = await TrackLog.query.where(TrackLog.track_id == track.track_id).gino.first()
+        if not exist:
+            log = TrackLog()
+            log.track_id = track.track_id
+            log.user_id = track.user_id
+            log.title = track.title
+            log.artist = track.artist
+            log.first_query = track.first_query
+            log.type = request_type
+            log.timeout = timeout
+            log.file_id = file_id
+            log.owner_id = track.owner_id
+            await log.create()
