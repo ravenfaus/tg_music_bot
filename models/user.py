@@ -11,4 +11,5 @@ class User(BaseModel):
     full_name = Column(String(100))
     username = Column(String(50))
     last_action = Column(TIMESTAMP(), nullable=False, default=func.now())
+    referral_id = Column(BigInteger)
     query: sql.Select

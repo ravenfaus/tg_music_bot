@@ -238,9 +238,10 @@ async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
                                        o=track.owner_id, t=track.track_id, q=query_id, off=0, d=1, f=1)))
     start_time = time.time()
     cached = await TrackLog.query.where(TrackLog.track_id == track.track_id).gino.first()
+    caption = f'<a href="t.me/RavenMusBot?start={user_id}">🎧RavenMusic</a>'
     if cached:
         file_id = cached.file_id
-        await bot.send_audio(user_id, file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
+        await bot.send_audio(user_id, file_id, caption,
                              performer=track.artist, title=track.title, reply_markup=kb)
     else:
         await vk.download(track.url, file_name)
@@ -248,7 +249,7 @@ async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
             cached_track = await bot.send_audio(config.CHANNEL_ID, audio, performer=track.artist,
                                                 title=track.title, duration=track.duration)
             file_id = cached_track.audio.file_id
-            await bot.send_audio(user_id, file_id, '<a href="t.me/RavenMusBot">🎧RavenMusic</a>',
+            await bot.send_audio(user_id, file_id, caption,
                                  performer=track.artist, title=track.title, reply_markup=kb)
             os.remove(file_name)
     timeout = round((time.time() - start_time) * 1000)
