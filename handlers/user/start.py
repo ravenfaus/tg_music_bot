@@ -17,10 +17,10 @@ def get_language_markup(first_launch: bool = False):
 async def start_message(message: types.Message, _: I18nMiddleware.gettext):
     args: str = message.get_args()
     if args:
-        if args.isdigit():
+        if len(args) < 30:
             user = await User.get(int(message.from_user.id))
             if not user.referral_id:
-                await user.update(referral_id=int(args)).apply()
+                await user.update(referral_id=args).apply()
     text_en = '✋You are welcome, <b>{}</b>. Please, choose your language below.'.format(message.from_user.full_name)
     text_ru = '✋Добро пожаловать, <b>{}</b>. Пожалуйста, выбери свой язык.'.format(message.from_user.full_name)
     result = text_en + '\n\n' + text_ru

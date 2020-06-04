@@ -1,4 +1,4 @@
-from sqlalchemy import sql, Column, BigInteger, String, TIMESTAMP, func
+from sqlalchemy import sql, Column, BigInteger, String, TIMESTAMP, func, CHAR
 
 from .base import BaseModel
 
@@ -11,5 +11,5 @@ class User(BaseModel):
     full_name = Column(String(100))
     username = Column(String(50))
     last_action = Column(TIMESTAMP(), nullable=False, default=func.now())
-    referral_id = Column(BigInteger)
+    referral_id = Column(CHAR(30))
     query: sql.Select
