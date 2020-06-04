@@ -12,10 +12,11 @@ class ACLMiddleware(BaseMiddleware):
         user_id = user.id
         db_user = await User.get(user_id)
         if db_user is None:
-            new_user = await User.create(user_id=user.id, language=user.language_code, full_name=user.full_name,
+            db_user = await User.create(user_id=user.id, language=user.language_code, full_name=user.full_name,
                                          username=user.username)
-            await Bot.get_current().send_message(config.ADMIN_ID, f'New user:\n{new_user.user_id} '
-                                                                  f'{new_user.full_name} @{new_user.username}')
+            await Bot.get_current().send_message(config.ADMIN_ID, f'New user:\n{db_user.user_id} '
+                                                                  f'{db_user.full_name} @{db_user.username}')
+        return db_user
 
     async def update_action(self, user: types.User):
         user_id = user.id
@@ -24,7 +25,8 @@ class ACLMiddleware(BaseMiddleware):
             await db_user.update(last_action=datetime.datetime.now()).apply()
 
     async def on_pre_process_message(self, message: types.Message, data: dict):
-        await self.setup_chat(message.from_user)
+        user = await self.setup_chat(message.from_user)
+        data['user'] = user
 
     async def on_post_process_update(self, update: types.Update, results, data: dict):
         if update.message:
@@ -35,7 +37,13 @@ class ACLMiddleware(BaseMiddleware):
             await self.update_action(update.inline_query.from_user)
 
     async def on_pre_process_callback_query(self, query: types.CallbackQuery, data: dict):
-        await self.setup_chat(query.from_user)
+        user = await self.setup_chat(query.from_user)
+        data['user'] = user
 
     async def on_pre_process_inline_query(self, inline_query: types.InlineQuery, data: dict):
-        await self.setup_chat(inline_query.from_user)
+        user = await self.setup_chat(inline_query.from_user)
+        data['user'] = user
+
+    async def on_pre_process_chosen_inline_result(self, chosen_inline_result: types.ChosenInlineResult, data: dict):
+        user = await self.setup_chat(chosen_inline_result.from_user)
+        data['user'] = user

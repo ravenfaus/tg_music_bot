@@ -27,3 +27,4 @@ POSTGRES_DB = 'db'
 VK_TOKEN = 'TOKEN'
 # custom options
 ADMIN_ID = 123456789
+I18N_DOMAIN = 'bot'

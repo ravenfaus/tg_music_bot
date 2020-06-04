@@ -1,0 +1,96 @@
+# Russian translations for PROJECT.
+# Copyright (C) 2020 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2020-06-04 06:20+0300\n"
+"PO-Revision-Date: 2020-06-04 05:31+0300\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ru\n"
+"Language-Team: ru <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.8.0\n"
+
+#: handlers/user/default_handler.py:8
+msgid "You have a good taste 👍"
+msgstr "У тебя хороший вкус 👍"
+
+#: handlers/user/start.py:34
+msgid ""
+"Success! Your language is English 🇺🇸. You can change it by /language "
+"command"
+msgstr "Готово! Твой язык русский 🇷🇺. Ты можешь поменять язык командой /language"
+
+#: handlers/user/start.py:37
+msgid ""
+"🎵Welcome to RavenMusBot! 🎵\n"
+"🔍Write to me artist or/and song and i will try to find music for you!\n"
+"🔎Also you can search music via inline mode. Press the button below to try"
+" this"
+msgstr ""
+"🎵Добро пожаловать к RavenMusBot! 🎵\n"
+"🔍Напиши исполнителя и/или название песни и я найду музыку для тебя\n"
+"🔎Также ты можешь искать музыку в инлайн режиме. Нажми на кнопку ниже, "
+"чтобы попробовать"
+
+#: handlers/user/start.py:42
+msgid "Try it!"
+msgstr "Попробовать!"
+
+#: handlers/user/start.py:46
+msgid "Choose your language below"
+msgstr "Выбери свой язык ниже"
+
+#: handlers/user/tracks.py:63
+msgid "Album download complete. Enjoy listening :)"
+msgstr "Загрузка альбома закончена. Приятного прослушивания :)"
+
+#: handlers/user/tracks.py:65
+msgid "An error occurred while processing the link. Please check the link."
+msgstr "Ошибка во время обработки ссылки. Пожалуйста, проверь ссылку"
+
+#: handlers/user/tracks.py:67
+msgid ""
+"An error occurred while loading the album. Check the link, the album must"
+" be open."
+msgstr ""
+"Ошибка во время загрузки альбома. Проверь ссылку, альбом должен быть "
+"открытым."
+
+#: handlers/user/tracks.py:81
+msgid "Please wait"
+msgstr "Пожалуйста, подождите..."
+
+#: handlers/user/tracks.py:124
+msgid "Sorry, there is a problem. Try again, please"
+msgstr "Извините, возникла ошибка. Попробуйте еще раз"
+
+#: handlers/user/tracks.py:143 handlers/user/tracks.py:194
+#: handlers/user/tracks.py:304
+msgid "Get all"
+msgstr "Скачать все"
+
+#: handlers/user/tracks.py:147
+msgid "Not found any more. Try another request😓"
+msgstr "Больше ничего не найдено. Попробуй запросить иначе😓"
+
+#: handlers/user/tracks.py:149
+msgid "Search for {request}"
+msgstr "Поиск для {request}"
+
+#: handlers/user/tracks.py:239
+msgid "Show similar"
+msgstr "Показать похожие"
+
+#: handlers/user/tracks.py:310
+msgid "Similar song to {track_name}"
+msgstr "Похожие песни на {track_name}"
+

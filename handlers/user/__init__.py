@@ -3,7 +3,7 @@ from aiogram import types
 
 from .admin import get_users, count_tracks, send_command, send_to_all, count_downloaded
 from .default_handler import all_other_messages
-from .start import start_message
+from .start import start_message, cmd_language, set_language, lang_callback
 from .tracks import list_callback, show_callback, track_callback, get_album, show_similar, similar_callback
 from .tracks import search_music, send_list, send_tracks, send_track, inline_search, inline_chosen_track
 from .admin import MessageOrder
@@ -20,7 +20,9 @@ def setup(dp: Dispatcher):
     dp.register_message_handler(send_to_all, state=MessageOrder.message_text)
     # Commands handlers
     dp.register_message_handler(start_message, commands='start')
+    dp.register_message_handler(cmd_language, commands='language')
     dp.register_message_handler(get_album, commands='album')
+    dp.register_callback_query_handler(set_language, lang_callback.filter())
     # Tracks handlers
     dp.register_callback_query_handler(send_list, list_callback.filter())
     dp.register_callback_query_handler(send_tracks, show_callback.filter())

@@ -14,16 +14,16 @@ from aiogram.types.base import String, Integer
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.exceptions import InvalidQueryID
 
+import config
+from middlewares.i18n import I18nMiddleware
 from models import InlineTrack, TrackLog
 from models.track import Track
 from utils.vk import Vk
-import config
 
 track_callback = CallbackData('song', 'id')
 list_callback = CallbackData('list', 'q', 'off', 'd')
 show_callback = CallbackData('show', 'q', 'off')
 similar_callback = CallbackData('sim', 'o', 't', 'q', 'off', 'd', 'f')
-vk = Vk(config.VK_TOKEN, config.VK_URL)
 
 
 def escape_file(name: str):
@@ -34,7 +34,7 @@ def escape_file(name: str):
     return name
 
 
-async def get_album(message: types.Message, logger: dict):
+async def get_album(message: types.Message, logger: dict, vk: Vk, _: I18nMiddleware.gettext):
     print('Get album')
     link = message.get_args()
     res = re.search(r'(audio_playlist|album\/)(.*)_(.*)(%2F|_|\/)(.*)', link)
@@ -60,15 +60,14 @@ async def get_album(message: types.Message, logger: dict):
             logger['timeout'] = timeouts_list
             logger['file_id'] = file_ids
             logger['track'] = logs_list
-            await message.answer('Загрузка альбома завершена. Приятного прослушивания;)')
+            await message.answer(_('Album download complete. Enjoy listening :)'))
         else:
-            await message.answer('Произошла ошибка во время обработки ссылки. Проверьте, пожалуйста, ссылку.')
+            await message.answer(_('An error occurred while processing the link. Please check the link.'))
     except KeyError:
-        await message.answer('Произошла ошибка во время загрузки альбома. '
-                             'Проверьте ссылку, альбом должен быть открытым.')
+        await message.answer(_('An error occurred while loading the album. Check the link, the album must be open.'))
 
 
-async def inline_search(inline_query: types.InlineQuery):
+async def inline_search(inline_query: types.InlineQuery, vk: Vk, _: I18nMiddleware.gettext):
     request = inline_query.query
     if request:
         offset = inline_query.offset if inline_query.offset else 0
@@ -79,7 +78,7 @@ async def inline_search(inline_query: types.InlineQuery):
         results = []
         search_result = json.loads(await vk.search_audio(request, 10, offset))
         kb = types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton('Пожалуйста, подождите...', callback_data='loading'))
+            types.InlineKeyboardButton(_('Please wait'), callback_data='loading'))
         for track in search_result['response']['items']:
             item = await add_inline_track(track, inline_query.from_user.id)
             results.append(types.InlineQueryResultAudio(id=item.track_id, audio_url=sample_audio,
@@ -102,7 +101,8 @@ async def add_inline_track(track: dict, user_id: int):
     return new_track
 
 
-async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, logger: dict):
+async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, logger: dict, vk: Vk,
+                              _: I18nMiddleware.gettext):
     track = await InlineTrack.query.where(InlineTrack.track_id == int(chosen_inline_query.result_id)) \
         .where(InlineTrack.user_id == chosen_inline_query.from_user.id).order_by(
         InlineTrack.first_query.desc()).gino.first()
@@ -121,11 +121,12 @@ async def inline_chosen_track(chosen_inline_query: types.ChosenInlineResult, log
         logger['file_id'] = cached_track.audio.file_id
         logger['track'] = track
     except FileNotFoundError:
+        file_error = _('Sorry, there is a problem. Try again, please')
         await chosen_inline_query.bot.edit_message_caption(inline_message_id=chosen_inline_query.inline_message_id,
-                                                           caption='Извините, возникли неполадки... Попробуйте еще раз:)')
+                                                           caption=file_error)
 
 
-async def search_music(message: types.Message):
+async def search_music(message: types.Message, vk: Vk, _: I18nMiddleware.gettext):
     request = message.text
     result = json.loads(await vk.search_audio(request, 8))
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
@@ -139,10 +140,13 @@ async def search_music(message: types.Message):
 
     keyboard_markup.row(
         types.InlineKeyboardButton('<', callback_data=list_callback.new(q=query_id, off=0, d=0)),
-        types.InlineKeyboardButton('All', callback_data=show_callback.new(q=query_id, off=0)),
+        types.InlineKeyboardButton(_('Get all'), callback_data=show_callback.new(q=query_id, off=0)),
         types.InlineKeyboardButton('>', callback_data=list_callback.new(q=query_id, off=8, d=1)),
     )
-    await message.answer(request, reply_markup=keyboard_markup)
+    if len(keyboard_markup.inline_keyboard) == 1:
+        await message.answer(_('Not found any more. Try another request😓'), reply_markup=keyboard_markup)
+    else:
+        await message.answer(_('Search for {request}').format(request=request), reply_markup=keyboard_markup)
 
 
 async def add_track(track: dict, query_id: str, request: str, user_id: int):
@@ -161,7 +165,7 @@ async def add_track(track: dict, query_id: str, request: str, user_id: int):
     return new_track
 
 
-async def send_list(clb: types.CallbackQuery, callback_data: dict):
+async def send_list(clb: types.CallbackQuery, callback_data: dict, vk: Vk, _: I18nMiddleware.gettext):
     await clb.answer()
     query_id = callback_data['q']
     offset = int(callback_data['off'])
@@ -187,13 +191,13 @@ async def send_list(clb: types.CallbackQuery, callback_data: dict):
             keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
     keyboard_markup.row(
         types.InlineKeyboardButton('<', callback_data=list_callback.new(q=query_id, off=prev_offset, d=0)),
-        types.InlineKeyboardButton('All', callback_data=show_callback.new(q=query_id, off=offset)),
+        types.InlineKeyboardButton(_('Get all'), callback_data=show_callback.new(q=query_id, off=offset)),
         types.InlineKeyboardButton('>', callback_data=list_callback.new(q=query_id, off=next_offset, d=1)),
     )
     await clb.message.edit_reply_markup(reply_markup=keyboard_markup)
 
 
-async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dict):
+async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dict, vk: Vk, _: I18nMiddleware.gettext):
     await clb.answer()
     user_id = clb.from_user.id
     query_id = callback_data['q']
@@ -204,7 +208,7 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dic
     file_ids = []
     for track in tracks:
         await clb.bot.send_chat_action(user_id, 'upload_audio')
-        timeout, file_id = await send_audio(track, clb.bot, user_id)
+        timeout, file_id = await send_audio(track, clb.bot, user_id, vk, _)
         timeouts_list.append(timeout)
         file_ids.append(file_id)
         logs_list.append(track)
@@ -213,7 +217,7 @@ async def send_tracks(clb: types.CallbackQuery, callback_data: dict, logger: dic
     logger['track'] = logs_list
 
 
-async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict):
+async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict, vk: Vk, _: I18nMiddleware.gettext):
     try:
         await clb.answer()
     except InvalidQueryID:
@@ -221,19 +225,18 @@ async def send_track(clb: types.CallbackQuery, callback_data: dict, logger: dict
     user_id = clb.from_user.id
     await clb.bot.send_chat_action(user_id, 'upload_audio')
     track_id = callback_data['id']
-    track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)) \
-        .order_by(Track.first_query.desc()).gino.first()
-    timeout, file_id = await send_audio(track, clb.bot, user_id)
+    track = await Track.query.where(Track.track_id == int(track_id)).where(Track.user_id == int(user_id)).gino.first()
+    timeout, file_id = await send_audio(track, clb.bot, user_id, vk, _)
     logger['timeout'] = timeout
     logger['file_id'] = file_id
     logger['track'] = track
 
 
-async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
+async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String], vk: Vk, _: I18nMiddleware.gettext):
     file_name = escape_file(f'{track.artist} - {track.title}.mp3')
     query_id = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(16)])
     kb = types.InlineKeyboardMarkup().add(
-        types.InlineKeyboardButton('Показать похожие',
+        types.InlineKeyboardButton(_('Show similar'),
                                    callback_data=similar_callback.new(
                                        o=track.owner_id, t=track.track_id, q=query_id, off=0, d=1, f=1)))
     start_time = time.time()
@@ -256,11 +259,13 @@ async def send_audio(track: Track, bot: Bot, user_id: Union[Integer, String]):
     return timeout, file_id
 
 
-async def show_similar(clb: types.CallbackQuery, callback_data: dict, logger: dict):
-    await clb.answer()
+async def show_similar(clb: types.CallbackQuery, callback_data: dict, vk: Vk, _: I18nMiddleware.gettext):
+    try:
+        await clb.answer()
+    except InvalidQueryID:
+        logging.info('Invalid Query ID from {}'.format(clb.from_user.id))
     similar_track = await TrackLog.query.where(TrackLog.track_id == int(callback_data['t']))\
         .where(TrackLog.owner_id == int(callback_data['o'])).gino.first()
-    print('Track: {} {}'.format(callback_data['t'], callback_data['o']))
     track_name = f"{similar_track.artist} - {similar_track.title}"
     query_id = callback_data['q']
     offset = int(callback_data['off'])
@@ -268,14 +273,13 @@ async def show_similar(clb: types.CallbackQuery, callback_data: dict, logger: di
     prev_offset = (offset - 8) if offset > 0 else 0
     keyboard_markup = types.InlineKeyboardMarkup(row_width=1)
     direction = int(callback_data['d'])
-    print('Direction {}'.format(direction))
     if direction:
         tracks = await Track.query.where(Track.query_id == query_id).limit(8).offset(offset).gino.all()
         if tracks:
             for track in tracks:
                 m, s = divmod(track.duration, 60)
                 text = f'{m}:{s} | {track.artist} - {track.title}'
-                data = track_callback.new(id=track.id)
+                data = track_callback.new(id=track.track_id)
                 keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
         else:
             tracks = json.loads(await vk.get_similar(similar_track.owner_id, similar_track.track_id))
@@ -294,13 +298,16 @@ async def show_similar(clb: types.CallbackQuery, callback_data: dict, logger: di
             data = track_callback.new(id=track.id)
             keyboard_markup.add(types.InlineKeyboardButton(text, callback_data=data))
     keyboard_markup.row(
-        types.InlineKeyboardButton('<', callback_data=similar_callback.new(o=similar_track.owner_id, t=similar_track.track_id,
+        types.InlineKeyboardButton('<', callback_data=similar_callback.new(o=similar_track.owner_id,
+                                                                           t=similar_track.track_id,
                                                                            q=query_id, off=prev_offset, d=0, f=0)),
-        types.InlineKeyboardButton('All', callback_data=show_callback.new(q=query_id, off=offset)),
-        types.InlineKeyboardButton('>', callback_data=similar_callback.new(o=similar_track.owner_id, t=similar_track.track_id,
+        types.InlineKeyboardButton(_('Get all'), callback_data=show_callback.new(q=query_id, off=offset)),
+        types.InlineKeyboardButton('>', callback_data=similar_callback.new(o=similar_track.owner_id,
+                                                                           t=similar_track.track_id,
                                                                            q=query_id, off=next_offset, d=1, f=0)),
     )
     if int(callback_data['f']):
-        await clb.message.answer(f'Похожие треки на {track_name}', reply_markup=keyboard_markup)
+        similar_songs = _('Similar song to {track_name}').format(track_name=track_name)
+        await clb.message.answer(similar_songs, reply_markup=keyboard_markup)
     else:
         await clb.message.edit_reply_markup(keyboard_markup)
